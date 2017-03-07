@@ -14,12 +14,42 @@ Player::Player(Side side) {
      * precalculating things, etc.) However, remember that you will only have
      * 30 seconds.
      */
+    // Set the side variables for doing moves on the board
+    mySide = side;
+    if(side == WHITE)
+        oppSide = BLACK;
+    else
+        oppSide = WHITE;
+    board = Board();
 }
 
 /*
  * Destructor for the player.
  */
 Player::~Player() {
+}
+
+// Returns the score of a game state
+double Player::scoreMove(Move *myMove)
+{
+    // Default score initialization
+    double score = 0.;
+
+    // Create a copy of the board to make the test move
+    Board * scorer = board.copy();
+
+    if(myMove != nullptr)
+        scorer->doMove(myMove, mySide);
+
+    // Actual score adjustment
+    score += scorer->count(mySide);
+    score -= scorer->count(oppSide);
+
+    // Clean-up the copy
+    delete scorer;
+
+    // Return the score
+    return score;
 }
 
 /*
@@ -38,7 +68,62 @@ Player::~Player() {
 Move *Player::doMove(Move *opponentsMove, int msLeft) {
     /*
      * TODO: Implement how moves your AI should play here. You should first
-     * process the opponent's opponents move before calculating your own move
+     * process the opponent's move before calculating your own move
      */
+    //time_t start, now;
+    //time(&start);
+
+    board.doMove(opponentsMove, oppSide);
+
+    Move * temp, * bestMove = nullptr;
+    bool valid, firstMove = true;
+    double bestScore, thisScore;
+
+    // Current implementation of a brute force move checking algorithm
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            // Make a new move and check if it's allowed
+            temp = new Move(i, j);
+            valid = board.checkMove(temp, mySide);
+
+            if(valid)
+            {
+                thisScore = scoreMove(temp);
+                if(firstMove)
+                {
+                    bestMove = temp;
+                    bestScore = thisScore;
+                    firstMove = false;
+                }
+                else if(thisScore > bestScore)
+                {
+                    bestScore = thisScore;
+
+                    delete bestMove;
+                    bestMove = temp;
+                }
+            }
+            else
+                // Not a valid move. Delete it.
+                delete temp;
+        }
+        //time(&now);
+        //if(difftime(now, start) >= msLeft)
+        //    return nullptr;
+    }
+
+    if(bestMove != nullptr)
+    {
+        board.doMove(bestMove, mySide);
+        return bestMove;
+    }
+
     return nullptr;
+}
+
+void Player::manualBoard(char boardData[])
+{
+    board.setBoard(boardData);
 }
