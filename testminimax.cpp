@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
      * TODO: Write code to set your player's internal board state to the
      * example state.
      */
-    Player.manualBoard(boardData);
+    player->manualBoard(boardData);
 
 
     // Get player's move and check if it's right.
@@ -48,6 +48,11 @@ int main(int argc, char *argv[]) {
         }
         std::cout << ", expected (1, 1)" << std::endl;
     }
+
+    // NEED to delete dynamically allocated memory!!!
+    delete move;
+    delete board;
+    delete player;
 
     return 0;
 }

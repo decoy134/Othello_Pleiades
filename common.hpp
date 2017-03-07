@@ -2,6 +2,7 @@
 #define __COMMON_H__
 
 #include<ctime>
+#include<vector>
 
 enum Side { 
     WHITE, BLACK
