@@ -30,6 +30,14 @@ public:
     int countWhite();
 
     void setBoard(char data[]);
+
+    // Returns all the possible moves on the board as a vector
+    vector<Tracer*> getPosMoves(Side side, Tracer * parent);
+
+    // Functions for faster scoring
+    void undoMove(Move * m);
+    void undoMoves(Tracer * t);
+    void doMoves(Tracer * t);
 };
 
 #endif

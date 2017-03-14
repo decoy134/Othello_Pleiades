@@ -25,4 +25,28 @@ public:
     void setY(int y) { this->y = y; }
 };
 
+// Structure used to trace up to 
+struct Tracer {
+    Move * move;
+    Side side;
+    Tracer * parent;
+
+    Tracer(Move * m, Side s, Tracer * p = nullptr) : move(m), side(s), parent(p) {}
+
+    // Destroy the move contained, but not the parent
+    ~Tracer(){delete move;}
+
+    // Retrieves top level move
+    Move * trace()
+    {
+        Tracer * temp = this;
+
+        if(temp->parent == nullptr)
+            return temp->move;
+        else
+            temp = temp->parent;
+    }
+    
+};
+
 #endif

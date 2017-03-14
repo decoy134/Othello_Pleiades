@@ -178,3 +178,51 @@ void Board::setBoard(char data[]) {
         }
     }
 }
+
+// Does sequence of suggested moves in REVERSE ORDER
+void Board::doMoves(Tracer * t)
+{
+     // No error checking, moves MUST be correct sequentially
+     while(t != nullptr)
+     {
+         this->set(t->side, t->move->getX(), t->move->getY());
+         t = t->parent;
+     }
+}
+
+// Undos the given move for scoring purposes
+void Board::undoMove(Move * m)
+{
+    int x = m->getX(), y = m->getY();
+
+    taken.reset(x + 8*y);
+    black.reset(x + 8*y);
+}
+
+// Sequentially undos a series of moves using a tracer
+void Board::undoMoves(Tracer * t)
+{
+    while(t != nullptr)
+    {
+        undoMove(t->move);
+        t = t->parent;
+    }
+}
+
+vector<Tracer*> Board::getPosMoves(Side side, Tracer * parent){
+    vector<Tracer*> ret; // vector to return
+    Move * temp; // Move holding variable
+
+    for(int i = 0; i < 64; i++)
+    {
+        temp = new Move(i % 8, i / 8);
+
+        // check if we can do this move
+        if(checkMove(temp, side))
+            ret.push_back(new Tracer(temp, side, parent));
+        else
+            delete temp;
+    }
+
+    return ret;
+}
