@@ -40,36 +40,35 @@ double Player::scoreMove(Move * myMove, Board b, Side side)
     Board * scorer = b.copy();
     scorer->doMove(myMove, side);
 
-    Side other;
-
     // Actual score adjustment
     pair<int, int> edge_scr = scorer->scoreEdge();
     pair<int, int> corn_scr = scorer->scoreCorner();
+    pair<int, int> fron_scr = scorer->frontierSquares();
 
-    int myEdge, oppEdge, myCorn, oppCorn;
+    int myEdge, oppEdge, myCorn, oppCorn, myFront, oppFront;
     if(mySide == BLACK)
     {
         myEdge = edge_scr.first;
         myCorn = corn_scr.first;
+        myFront = fron_scr.first;
 
         oppEdge = edge_scr.second;
         oppCorn = corn_scr.second;
-
-        other = WHITE;
+        oppFront = fron_scr.second;
     }
     else
     {
         myEdge = edge_scr.second;
         myCorn = corn_scr.second;
+        myFront = fron_scr.second;
 
         oppEdge = edge_scr.first;
         oppCorn = corn_scr.first;
-
-        other = BLACK;
+        oppFront = fron_scr.first;
     }
 
-    score += (scorer->count(mySide));// + myEdge + myCorn);
-    score -= (scorer->count(oppSide));// + oppEdge + oppCorn);
+    score += (scorer->count(mySide) + myEdge + myCorn - 0.5 * myFront);
+    score -= (scorer->count(oppSide) + oppEdge + oppCorn - 0.5 * oppFront);
 
     // Delete the scorer
     delete scorer;
@@ -199,8 +198,11 @@ Move *Player::traceBest(vector< vector<Tracer*> > dec)
 
                 if(tester != nullptr)
                     delete tester;
-                tester = board.copy(); // copy the new board
-                tester->doMoves(parent); // implement the moves to the board
+                if(first_iter)
+                {
+                    tester = board.copy(); // copy the new board
+                    tester->doMoves(parent); // implement the moves to the board
+                }
 
                 move_scr = -100000;
                 if(side == mySide)
@@ -224,6 +226,7 @@ Move *Player::traceBest(vector< vector<Tracer*> > dec)
                 move_scr = score;
             }
         }
+        // Memory clean up
         if(parent != nullptr)
         {
             parent->score = move_scr;
@@ -234,6 +237,8 @@ Move *Player::traceBest(vector< vector<Tracer*> > dec)
             delete tester;
             tester = nullptr;
         }
+
+        // No longer the first interation
         first_iter = false;
     }
 
@@ -285,12 +290,10 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
 
     // Changing loop logic
     Side currSide = oppSide; // Side of the player whose move we are checking
-    bool max_min = false; // true means we are maximizing, false means minimizing
-
 
     /* --------BEGIN: MINIMAX-------- */
 
-    int N = 4; // Depth we are heading to
+    int N = 3; // Depth we are heading to
 
     dec.push_back(board.getPosMoves(mySide, nullptr));
    
@@ -322,35 +325,10 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
             
             delete tester; // free the memory
         }
-/*
-        // Set the new return move from this depth
-        if(ret != nullptr)
-            delete ret;
-        temp = best_mov->trace();
-        ret = new Move(temp->getX(), temp->getY());
-
-        // Check how much time we have left
-        time(&now);
-
-        // If we need to make a move now
-        if( (msLeft > 0) && difftime(now, start) > (msLeft - 0.2) )
-        {
-            for(auto it = dec.begin(); it != dec.end(); it++)
-            {
-                for(auto jt = it->begin(); jt != it->end(); jt++)
-                    delete *jt;
-            }
-
-            board.doMove(ret, mySide);
-
-            return ret;
-        }
-*/
-        if(max_min)
+        if(currSide == mySide)
             currSide = oppSide;
         else
             currSide = mySide;
-        max_min = !max_min;
     }
 
     Move * temp = traceBest(dec);

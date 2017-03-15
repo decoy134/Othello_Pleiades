@@ -179,7 +179,12 @@ void Board::setBoard(char data[]) {
     }
 }
 
-// Does sequence of suggested moves in REVERSE ORDER
+int Board::countAll()
+{
+    return taken.count();
+}
+
+// Does sequence of suggested moves
 void Board::doMoves(Tracer * t)
 {
      vector<Tracer*> path; // the path taken by the tracer
@@ -197,39 +202,83 @@ void Board::doMoves(Tracer * t)
      }
 }
 
-/*
-// Undos the given move for scoring purposes
-void Board::undoMove(Move * m, Side side)
+pair<int, int> Board::frontierSquares()
 {
-    if(m == nullptr)
-        return;
+    // Order is BLACK and then WHITE
+    pair<int, int> score = make_pair(0, 0);
 
-    int x = m->getX(), y = m->getY();
+    // North, West, South, East, Center
+    int N, W, S, E, C;
+    int valN, valW, valS, valE;
 
-    taken.set(x + 8 * y, false);
-    black.set(x + 8 * y, false);
+    int weight = 1;
+
+    for(int i = 0; i < 8; i++)
+        for(int j = 0; j < 8; j++)
+        {
+            C = i + 8 * j;
+
+            W = i - 1;
+            valW = (W >= 0);
+
+            N = j - 1;
+            valN = (N >= 0);
+
+            E = i + 1;
+            valE = (E < 8);
+
+            S = j + 1;
+            valS = (S < 8);
+
+            if(!taken[C])
+            {
+                if(valN)
+                {
+                    if(taken[C - 8] && black[C - 8])
+                        score.first += weight;
+                    else if(taken[C - 8])
+                        score.second += weight;
+                }
+                if(valW)
+                {
+                    if(taken[C - 1] && black[C - 1])
+                        score.first += weight;
+                    else if(taken[C - 8])
+                        score.second += weight;
+                }
+                if(valS)
+                {
+                    if(taken[C + 8] && black[C + 8])
+                        score.first += weight;
+                    else if(taken[C + 8])
+                        score.second += weight;
+                }
+                if(valE)
+                {
+                    if(taken[C + 1] && black[C + 1])
+                        score.first += weight;
+                    else if(taken[C + 1])
+                        score.second += weight;
+                }
+            }
+        }
+
+    return score;
 }
-
-// Sequentially undos a series of moves using a tracer
-void Board::undoMoves(Tracer * t)
-{
-    while(t != nullptr)
-    {
-        undoMove(t->move, t->side);
-        t = t->parent;
-    }
-}
-*/
 
 pair<int, int> Board::scoreEdge()
 {
     // Order is BLACK, and then WHITE
     pair<int, int> ret = make_pair(0, 0);
     
-    int weight = 2;
+    if(countAll() > 50)
+        return ret;
+
+    int weight;
 
     for(int i = 1; i < 7; i++)
     {
+        weight = 6;
         if(i == 1 || i == 7)
             weight *= -1;
 
@@ -278,7 +327,10 @@ pair<int, int> Board::scoreCorner()
     // BLACK, and then WHITE
     pair<int, int> ret = make_pair(0, 0);
 
-    int weight = 4;
+    int weight = 12;
+
+    if(countAll() > 50)
+        return ret;
 
     // Top left corners
     if(taken[0])

@@ -35,9 +35,10 @@ public:
     // Returns all the possible moves on the board as a vector
     vector<Tracer*> getPosMoves(Side side, Tracer * parent);
 
-    // Functions for faster scoring
-    //void undoMove(Move * m, Side side);
+    int countAll();
+    pair<int, int> frontierSquares();
     //void undoMoves(Tracer * t);
+
     pair<int, int> scoreEdge();
     pair<int, int> scoreCorner();
 
