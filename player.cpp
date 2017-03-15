@@ -1,5 +1,6 @@
 #include "player.hpp"
 
+using namespace std;
 /*
  * Constructor for the player; initialize everything here. The side your AI is
  * on (BLACK or WHITE) is passed in as "side". The constructor must finish
@@ -30,22 +31,47 @@ Player::~Player() {
 }
 
 // Returns the score of a game state
-double Player::scoreMove(Move *myMove, Board b, Side side)
+double Player::scoreMove(Move * myMove, Board b, Side side)
 {
     // Default score initialization
     double score = 0.;
 
-    // Create a copy of the board to make the test move
+    // Make a copy of the board and do the move on the requested side
     Board * scorer = b.copy();
+    scorer->doMove(myMove, side);
 
-    if(myMove != nullptr)
-        scorer->doMove(myMove, side);
+    Side other;
 
     // Actual score adjustment
-    score += scorer->count(mySide);
-    score -= scorer->count(oppSide);
+    pair<int, int> edge_scr = scorer->scoreEdge();
+    pair<int, int> corn_scr = scorer->scoreCorner();
 
-    // Clean-up the copy
+    int myEdge, oppEdge, myCorn, oppCorn;
+    if(mySide == BLACK)
+    {
+        myEdge = edge_scr.first;
+        myCorn = corn_scr.first;
+
+        oppEdge = edge_scr.second;
+        oppCorn = corn_scr.second;
+
+        other = WHITE;
+    }
+    else
+    {
+        myEdge = edge_scr.second;
+        myCorn = corn_scr.second;
+
+        oppEdge = edge_scr.first;
+        oppCorn = corn_scr.first;
+
+        other = BLACK;
+    }
+
+    score += (scorer->count(mySide));// + myEdge + myCorn);
+    score -= (scorer->count(oppSide));// + oppEdge + oppCorn);
+
+    // Delete the scorer
     delete scorer;
 
     // Return the score
@@ -142,6 +168,7 @@ Move *Player::testMinimax()
     board.doMove(bestMove, mySide);
     return bestMove;
 }
+
 /*
  * Compute the next move given the opponent's last move. Your AI is
  * expected to keep track of the board on its own. If this is the first move,
@@ -156,63 +183,178 @@ Move *Player::testMinimax()
  * return nullptr.
  */
 Move *Player::doMove(Move *opponentsMove, int msLeft) {
-    //time_t start, now;
-    //time(&start);
+    // Set the current time and declare the present time 
+    time_t start, now;
+    time(&start);
 
+    // Update the board with the opposing player's move
     board.doMove(opponentsMove, oppSide);
-
-    // right now we are just returning minimax since it is the best algorithm so far
-
-    //if(testingMinimax)
+    
+    // For the purposes of testing the miniMax algorithm
+    if(false)//testingMinimax)
         return testMinimax();
 
-    Move * temp, * bestMove = nullptr;
-    bool valid, firstMove = true;
-    double bestScore, thisScore;
+    vector< vector<Tracer*> > dec; // decision tree depths
+    vector<Tracer*> temp_vec; // temporary vector
+    int i; // depth index
 
-    // Current implementation of a brute force move checking algorithm
-    for(int i = 0; i < 8; i++)
+    Tracer * best_mov = nullptr; // best move in a tracer seen so far
+    Move * temp, * ret = nullptr; // move variable to return
+
+    // Changing loop logic
+    Side currSide = mySide; // Side of the player whose move we are checking
+    bool max_min = true; // true means we are maximizing, false means minimizing
+
+    double score, best_scr;//alpha = -10000, beta = 10000;
+
+    /* --------BEGIN: MINIMAX-------- */
+
+    dec.push_back(board.getPosMoves(currSide, nullptr));
+    
+    if(dec[0][0]->move == nullptr)
     {
-        for(int j = 0; j < 8; j++)
+        delete dec[0][0];
+        return nullptr;
+    }
+
+    // Checking the decision tree to a minimum of depth 4
+    for(i = 1; i < 2; i++)
+    {
+        // Reset the best score factor at every depth
+        best_scr = -10000;
+        //if(max_min)
+            //best_scr *= -1;
+
+        // Augment the decision set.
+        /* --------------------ARCHIEVED CODE
+        if(i == 0) // no initial moves to check
         {
-            // Make a new move and check if it's allowed
-            temp = new Move(i, j);
-            valid = board.checkMove(temp, mySide);
+            dec.push_back(board.getPosMoves(currSide, nullptr));
 
-            if(valid)
+            // We are forced into losing the move
+            if(dec[0][0]->move == nullptr)
             {
-                thisScore = scoreMove(temp, board, mySide);
+                delete dec[0][0];
+                return nullptr;
+            }
+            for(auto it = dec[0].begin(); it != dec[0].end(); it++)
+            {
+                // score the board state
+                score = scoreMove((*it)->move, board, currSide);
 
-                if(firstMove)
-                {
-                    bestMove = temp;
-                    bestScore = thisScore;
-                    firstMove = false;
+                // Trying to maximize score on mySide with alpha
+                if( (max_min) && (score > best_scr) )
+                {   
+                    best_scr = score;
+                    best_mov = *it;
                 }
-                else if(thisScore > bestScore)
-                {
-                    bestScore = thisScore;
-
-                    delete bestMove;
-                    bestMove = temp;
+                // Trying to minimize score on oppSide with beta
+                else if ( (!max_min) && (score < best_scr) )
+                { 
+                    best_scr = score;
+                    best_mov = *it;
                 }
             }
-            else
-                // Not a valid move. Delete it.
-                delete temp;
+            
         }
-        //time(&now);
-        //if(difftime(now, start) >= msLeft)
-        //    return nullptr;
+        */
+        //else // tree is of depth greater than 1
+        //{
+        // Push back with an empty vector
+        dec.push_back(vector<Tracer*>());
+
+        // Iterate over last layer's possible moves
+        for(auto it = dec[i - 1].begin(); it != dec[i - 1].end(); it++)
+        {
+            double move_scr = 9999;
+            if(max_min)
+                move_scr *= -1;
+
+            Board * tester = board.copy(); // copy the board for testing.
+            tester->doMoves(*it); // make the board out of the tracer
+
+            // Get the possible moves with the tracer as the parent
+            temp_vec = tester->getPosMoves(currSide, *it);
+            
+            // Fast memory append
+            dec[i].reserve( temp_vec.size() );
+            dec[i].insert( dec[i].end(), temp_vec.begin(), temp_vec.end() );
+            
+            // iterate over all possible decisions
+            for(auto jt = temp_vec.begin(); jt != temp_vec.end(); jt++)
+            {
+                // score the board state
+                score = scoreMove((*jt)->move, *tester, currSide);
+
+                // Trying to maximize score on mySide with alpha
+                if( (max_min) && (score > move_scr) )
+                {
+                    move_scr = score;
+                }
+                else if( (!max_min) && (score < move_scr) )
+                {
+                    move_scr = score;
+                }
+                /*
+                // Trying to minimize score on oppSide with beta
+                else if ( (!max_min) && (score < best_scr))
+                {
+                    best_scr = score;
+                    best_mov = *jt;
+                }
+                */
+            }
+
+            if(move_scr > best_scr)
+            {
+                best_scr = move_scr;
+                best_mov = *it;
+            }
+            delete tester; // free the memory
+        }
+
+        // Set the new return move from this depth
+        if(ret != nullptr)
+            delete ret;
+        temp = best_mov->trace();
+        ret = new Move(temp->getX(), temp->getY());
+
+        // Check how much time we have left
+        time(&now);
+
+        // If we need to make a move now
+        if( (msLeft > 0) && difftime(now, start) > (msLeft - 0.2) )
+        {
+            for(auto it = dec.begin(); it != dec.end(); it++)
+            {
+                for(auto jt = it->begin(); jt != it->end(); jt++)
+                    delete *jt;
+            }
+
+            board.doMove(ret, mySide);
+
+            return ret;
+        }
+
+        // Switch the current side and max_min goal
+        if(max_min)
+            currSide = oppSide;
+        else
+            currSide = mySide;
+        max_min = !max_min;
     }
 
-    if(bestMove != nullptr)
+    /* ---------END: MINIMAX--------- */
+
+    for(auto it = dec.begin(); it != dec.end(); it++)
     {
-        board.doMove(bestMove, mySide);
-        return bestMove;
+        for(auto jt = it->begin(); jt != it->end(); jt++)
+            delete *jt;
     }
 
-    return nullptr;
+    board.doMove(ret, mySide);
+
+    return ret;
 }
 
 // Manually sets the board

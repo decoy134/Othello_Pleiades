@@ -13,13 +13,14 @@ private:
 
     bool occupied(int x, int y);
     bool get(Side side, int x, int y);
-    void set(Side side, int x, int y);
     bool onBoard(int x, int y);
 
 public:
     Board();
     ~Board();
     Board *copy();
+
+    void set(Side side, int x, int y);
 
     bool isDone();
     bool hasMoves(Side side);
@@ -35,8 +36,11 @@ public:
     vector<Tracer*> getPosMoves(Side side, Tracer * parent);
 
     // Functions for faster scoring
-    void undoMove(Move * m);
-    void undoMoves(Tracer * t);
+    //void undoMove(Move * m, Side side);
+    //void undoMoves(Tracer * t);
+    pair<int, int> scoreEdge();
+    pair<int, int> scoreCorner();
+
     void doMoves(Tracer * t);
 };
 

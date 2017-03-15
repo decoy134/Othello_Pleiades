@@ -3,6 +3,7 @@
 
 #include<ctime>
 #include<vector>
+#include<iostream>
 
 enum Side { 
     WHITE, BLACK
@@ -34,17 +35,22 @@ struct Tracer {
     Tracer(Move * m, Side s, Tracer * p = nullptr) : move(m), side(s), parent(p) {}
 
     // Destroy the move contained, but not the parent
-    ~Tracer(){delete move;}
+    ~Tracer(){
+        if(move != nullptr)
+            delete move;
+    }
 
     // Retrieves top level move
     Move * trace()
     {
         Tracer * temp = this;
 
-        if(temp->parent == nullptr)
-            return temp->move;
-        else
+        while(temp->parent != nullptr)
+        {
             temp = temp->parent;
+        }
+
+        return temp->move;
     }
     
 };

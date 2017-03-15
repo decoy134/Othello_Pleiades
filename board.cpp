@@ -182,21 +182,32 @@ void Board::setBoard(char data[]) {
 // Does sequence of suggested moves in REVERSE ORDER
 void Board::doMoves(Tracer * t)
 {
+     vector<Tracer*> path; // the path taken by the tracer
+
      // No error checking, moves MUST be correct sequentially
      while(t != nullptr)
      {
-         this->set(t->side, t->move->getX(), t->move->getY());
+         path.push_back(t);
          t = t->parent;
+     }
+
+     for(auto it = path.rbegin(); it != path.rend(); it++)
+     {
+         this->doMove( (*it)->move, (*it)->side );
      }
 }
 
+/*
 // Undos the given move for scoring purposes
-void Board::undoMove(Move * m)
+void Board::undoMove(Move * m, Side side)
 {
+    if(m == nullptr)
+        return;
+
     int x = m->getX(), y = m->getY();
 
-    taken.reset(x + 8*y);
-    black.reset(x + 8*y);
+    taken.set(x + 8 * y, false);
+    black.set(x + 8 * y, false);
 }
 
 // Sequentially undos a series of moves using a tracer
@@ -204,25 +215,156 @@ void Board::undoMoves(Tracer * t)
 {
     while(t != nullptr)
     {
-        undoMove(t->move);
+        undoMove(t->move, t->side);
         t = t->parent;
     }
+}
+*/
+
+pair<int, int> Board::scoreEdge()
+{
+    // Order is BLACK, and then WHITE
+    pair<int, int> ret = make_pair(0, 0);
+    
+    int weight = 2;
+
+    for(int i = 1; i < 7; i++)
+    {
+        if(i == 1 || i == 7)
+            weight *= -1;
+
+        // Top row
+        if(taken[i])
+        {
+            if(black[i])
+                ret.first += weight;
+            else
+                ret.second += weight;
+        }
+
+        // Left col
+        if(taken[i * 8])
+        {
+            if(black[i * 8])
+                ret.first += weight;
+            else
+                ret.second += weight;
+        }
+
+        // Bottom row
+        if(taken[i + 56])
+        {
+            if(black[i + 56])
+                ret.first += weight;
+            else
+                ret.second += weight;
+        }
+
+        // Right col
+        if(taken[i * 8 + 7])
+        {
+            if(black[i * 8 + 7])
+                ret.first += weight;
+            else
+                ret.second += weight;
+        }
+    }
+
+    return ret;
+}
+
+pair<int, int> Board::scoreCorner()
+{
+    // BLACK, and then WHITE
+    pair<int, int> ret = make_pair(0, 0);
+
+    int weight = 5;
+
+    // Top left corners
+    if(taken[0])
+    {
+        if(black[0])
+            ret.first += weight;
+        else
+            ret.second += weight;
+    }
+    if(taken[9])
+    {
+        if(black[9])
+            ret.first -= weight;
+        else
+            ret.second -= weight;
+    }
+
+    // Top right corners
+    if(taken[7])
+    {
+        if(black[7])
+            ret.first += weight;
+        else
+            ret.second += weight;
+    }
+    if(taken[14])
+    {
+        if(black[14])
+            ret.first -= weight;
+        else
+            ret.second -= weight;
+    }
+
+    // Bottom left corners
+    if(taken[56])
+    {
+        if(black[56])
+            ret.first += weight;
+        else
+            ret.second += weight;
+    }
+    if(taken[49])
+    {
+        if(black[49])
+            ret.first -= weight;
+        else
+            ret.second -= weight;
+    }
+
+    // Bottom right corners
+    if(taken[63])
+    {
+        if(black[63])
+            ret.first += weight;
+        else
+            ret.second += weight;
+    }
+    if(taken[54])
+    {
+        if(black[54])
+            ret.first -= weight;
+        else
+            ret.second -= weight;
+    }
+
+    return ret;
 }
 
 vector<Tracer*> Board::getPosMoves(Side side, Tracer * parent){
     vector<Tracer*> ret; // vector to return
     Move * temp; // Move holding variable
 
-    for(int i = 0; i < 64; i++)
-    {
-        temp = new Move(i % 8, i / 8);
+    for(int i = 0; i < 8; i++)
+        for(int j = 0; j < 8; j++)
+        {
+            temp = new Move(i, j);
+            // check if we can do this move
+            if(checkMove(temp, side))
+                ret.push_back(new Tracer(temp, side, parent));
+            else
+                delete temp;
+        }
 
-        // check if we can do this move
-        if(checkMove(temp, side))
-            ret.push_back(new Tracer(temp, side, parent));
-        else
-            delete temp;
-    }
+    // The only valid move is nullptr
+    if(ret.size() == 0)
+        ret.push_back(new Tracer(nullptr, side, parent));
 
     return ret;
 }
