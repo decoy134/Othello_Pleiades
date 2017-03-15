@@ -31,8 +31,9 @@ struct Tracer {
     Move * move;
     Side side;
     Tracer * parent;
+    double score;
 
-    Tracer(Move * m, Side s, Tracer * p = nullptr) : move(m), side(s), parent(p) {}
+    Tracer(Move * m, Side s, Tracer * p = nullptr) : move(m), side(s), parent(p), score(0) {}
 
     // Destroy the move contained, but not the parent
     ~Tracer(){

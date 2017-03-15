@@ -278,7 +278,7 @@ pair<int, int> Board::scoreCorner()
     // BLACK, and then WHITE
     pair<int, int> ret = make_pair(0, 0);
 
-    int weight = 5;
+    int weight = 4;
 
     // Top left corners
     if(taken[0])

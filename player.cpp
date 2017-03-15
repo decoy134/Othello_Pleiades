@@ -169,6 +169,89 @@ Move *Player::testMinimax()
     return bestMove;
 }
 
+// Computes the best move from a vector of vectors for Tracers
+Move *Player::traceBest(vector< vector<Tracer*> > dec)
+{
+    // The current parent of the nodes we are examining
+    Tracer * parent = nullptr;
+    Board * tester = nullptr;
+    double score, move_scr; // running score value
+    Move * move; // placeholder move variable
+    Side side; // placeholder side variable
+
+    bool first_iter = true; // first iteration
+
+    // Start from the lowest depth and head to the top
+    for(auto it = dec.rbegin(); it != dec.rend() - 1; it++)
+    {
+        // iterate over all possible decisions
+        for(auto jt = it->begin(); jt != it->end(); jt++)
+        {
+            move = (*jt)->move;
+            side = (*jt)->side;
+
+            // Parent has changed, adjust board accordingly
+            if( parent != (*jt)->parent )
+            {
+                if(parent != nullptr)
+                    parent->score = move_scr;
+                parent = (*jt)->parent; // set the new parent
+
+                if(tester != nullptr)
+                    delete tester;
+                tester = board.copy(); // copy the new board
+                tester->doMoves(parent); // implement the moves to the board
+
+                move_scr = -100000;
+                if(side == mySide)
+                    move_scr *= -1;
+            }
+
+            if(first_iter)
+                // score the board state
+                score = scoreMove(move, *tester, side);
+            else
+                score = (*jt)->score;
+
+            // Trying to maximize score
+            if( (side == oppSide) && (score > move_scr) )
+            {
+                move_scr = score;
+            }
+            // Trying to minimize score
+            else if( (side == mySide) && (score < move_scr) )
+            {
+                move_scr = score;
+            }
+        }
+        if(parent != nullptr)
+        {
+            parent->score = move_scr;
+            parent = nullptr;
+        }
+        if(tester != nullptr)
+        {
+            delete tester;
+            tester = nullptr;
+        }
+        first_iter = false;
+    }
+
+    double best_scr = -100000;
+    move = nullptr;
+
+    for(auto it = dec[0].begin(); it != dec[0].end(); it++)
+    {
+        if((*it)->score > best_scr)
+        {
+            best_scr = (*it)->score;
+            move = (*it)->move;
+        }
+    }
+
+    return move;
+}
+
 /*
  * Compute the next move given the opponent's last move. Your AI is
  * expected to keep track of the board on its own. If this is the first move,
@@ -191,26 +274,27 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
     board.doMove(opponentsMove, oppSide);
     
     // For the purposes of testing the miniMax algorithm
-    if(false)//testingMinimax)
+    if(testingMinimax)
         return testMinimax();
 
     vector< vector<Tracer*> > dec; // decision tree depths
     vector<Tracer*> temp_vec; // temporary vector
     int i; // depth index
 
-    Tracer * best_mov = nullptr; // best move in a tracer seen so far
-    Move * temp, * ret = nullptr; // move variable to return
+    Move * ret = nullptr; // move variable to return
 
     // Changing loop logic
-    Side currSide = mySide; // Side of the player whose move we are checking
-    bool max_min = true; // true means we are maximizing, false means minimizing
+    Side currSide = oppSide; // Side of the player whose move we are checking
+    bool max_min = false; // true means we are maximizing, false means minimizing
 
-    double score, best_scr;//alpha = -10000, beta = 10000;
 
     /* --------BEGIN: MINIMAX-------- */
 
-    dec.push_back(board.getPosMoves(currSide, nullptr));
-    
+    int N = 4; // Depth we are heading to
+
+    dec.push_back(board.getPosMoves(mySide, nullptr));
+   
+    // First depth move augmentation 
     if(dec[0][0]->move == nullptr)
     {
         delete dec[0][0];
@@ -218,58 +302,14 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
     }
 
     // Checking the decision tree to a minimum of depth 4
-    for(i = 1; i < 2; i++)
+    for(i = 1; i < N; i++)
     {
-        // Reset the best score factor at every depth
-        best_scr = -10000;
-        //if(max_min)
-            //best_scr *= -1;
-
-        // Augment the decision set.
-        /* --------------------ARCHIEVED CODE
-        if(i == 0) // no initial moves to check
-        {
-            dec.push_back(board.getPosMoves(currSide, nullptr));
-
-            // We are forced into losing the move
-            if(dec[0][0]->move == nullptr)
-            {
-                delete dec[0][0];
-                return nullptr;
-            }
-            for(auto it = dec[0].begin(); it != dec[0].end(); it++)
-            {
-                // score the board state
-                score = scoreMove((*it)->move, board, currSide);
-
-                // Trying to maximize score on mySide with alpha
-                if( (max_min) && (score > best_scr) )
-                {   
-                    best_scr = score;
-                    best_mov = *it;
-                }
-                // Trying to minimize score on oppSide with beta
-                else if ( (!max_min) && (score < best_scr) )
-                { 
-                    best_scr = score;
-                    best_mov = *it;
-                }
-            }
-            
-        }
-        */
-        //else // tree is of depth greater than 1
-        //{
         // Push back with an empty vector
         dec.push_back(vector<Tracer*>());
 
         // Iterate over last layer's possible moves
         for(auto it = dec[i - 1].begin(); it != dec[i - 1].end(); it++)
         {
-            double move_scr = 9999;
-            if(max_min)
-                move_scr *= -1;
-
             Board * tester = board.copy(); // copy the board for testing.
             tester->doMoves(*it); // make the board out of the tracer
 
@@ -280,39 +320,9 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
             dec[i].reserve( temp_vec.size() );
             dec[i].insert( dec[i].end(), temp_vec.begin(), temp_vec.end() );
             
-            // iterate over all possible decisions
-            for(auto jt = temp_vec.begin(); jt != temp_vec.end(); jt++)
-            {
-                // score the board state
-                score = scoreMove((*jt)->move, *tester, currSide);
-
-                // Trying to maximize score on mySide with alpha
-                if( (max_min) && (score > move_scr) )
-                {
-                    move_scr = score;
-                }
-                else if( (!max_min) && (score < move_scr) )
-                {
-                    move_scr = score;
-                }
-                /*
-                // Trying to minimize score on oppSide with beta
-                else if ( (!max_min) && (score < best_scr))
-                {
-                    best_scr = score;
-                    best_mov = *jt;
-                }
-                */
-            }
-
-            if(move_scr > best_scr)
-            {
-                best_scr = move_scr;
-                best_mov = *it;
-            }
             delete tester; // free the memory
         }
-
+/*
         // Set the new return move from this depth
         if(ret != nullptr)
             delete ret;
@@ -335,14 +345,16 @@ Move *Player::doMove(Move *opponentsMove, int msLeft) {
 
             return ret;
         }
-
-        // Switch the current side and max_min goal
+*/
         if(max_min)
             currSide = oppSide;
         else
             currSide = mySide;
         max_min = !max_min;
     }
+
+    Move * temp = traceBest(dec);
+    ret = new Move(temp->getX(), temp->getY());
 
     /* ---------END: MINIMAX--------- */
 

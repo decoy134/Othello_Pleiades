@@ -7,8 +7,8 @@
 using namespace std;
 
 // Rudimentary decision tree, still under construction!!!
-// TODO Implement PriorityQueue
 
+// 
 struct CompareDecisions
 {
     bool operator() (Decision x, Decision y)
@@ -22,11 +22,13 @@ struct CompareDecisions
 struct Decision
 {
     int x, y; // x and y coordinates of the move stored
-    double score; // score of this move
+    double score; // score of this move and its depth
 
-    // Priority queue for recording branching decisions in order of best
-    priority_queue<Decision, vector<Decision>, CompareDecisions> branch;
-    Node(int x_coor, int y_coor);
+    Decision parent; // parent node to retrieve best path
+
+    ~Decision()
+    {
+    }
 };
 
 Node::Node(int x_coor, y_coor) : x(x_coor), y(y_coor), score(0) {}

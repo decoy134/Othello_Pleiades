@@ -23,6 +23,7 @@ public:
     double scoreMove(Move *myMove, Board b, Side side);
     void manualBoard(char boardData[]); // A size 64 char array for testing purposes
 
+    Move * traceBest(vector< vector<Tracer*> > dec); // Traces the best move
     // Flag to tell if the player is running within the test_minimax context
     bool testingMinimax;
 };
